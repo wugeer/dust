@@ -6,6 +6,7 @@ use serde::Serialize;
 pub struct DisplayNode {
     // Note: the order of fields in important here, for PartialEq and PartialOrd
     pub size: u64,
+    pub filetime: Option<u64>,
     pub name: PathBuf,
     pub children: Vec<DisplayNode>,
 }

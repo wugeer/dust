@@ -29,18 +29,21 @@ pub fn get_biggest(
     let root;
 
     if number_top_level_nodes > 1 {
-        let size = if by_filetime.is_some() {
-            top_level_nodes
-                .iter()
-                .map(|node| node.size)
-                .max()
-                .unwrap_or(0)
+        let filetime = if by_filetime.is_some() {
+            Some(
+                top_level_nodes
+                    .iter()
+                    .map(|node| node.size)
+                    .max()
+                    .unwrap_or(0),
+            )
         } else {
-            top_level_nodes.iter().map(|node| node.size).sum()
+            None
         };
         root = Node {
             name: PathBuf::from("(total)"),
-            size,
+            size: top_level_nodes.iter().map(|node| node.size).sum(),
+            filetime,
             children: top_level_nodes,
             inode_device: None,
             depth: 0,
@@ -137,6 +140,7 @@ fn flat_rebuilder(allowed_nodes: HashMap<&Path, &Node>, current: &Node) -> Displ
         .map(|v| DisplayNode {
             name: v.name.clone(),
             size: v.size,
+            filetime: v.filetime,
             children: vec![],
         })
         .collect::<Vec<DisplayNode>>();
@@ -144,10 +148,12 @@ fn flat_rebuilder(allowed_nodes: HashMap<&Path, &Node>, current: &Node) -> Displ
 }
 
 fn build_display_node(mut new_children: Vec<DisplayNode>, current: &Node) -> DisplayNode {
+    // todo: 排序这里最好也要根据时间来排序
     new_children.sort_by(|lhs, rhs| lhs.cmp(rhs).reverse());
     DisplayNode {
         name: current.name.clone(),
         size: current.size,
+        filetime: current.filetime,
         children: new_children,
     }
 }

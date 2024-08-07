@@ -18,7 +18,6 @@ use thousands::Separable;
 
 pub static UNITS: [char; 4] = ['T', 'G', 'M', 'K'];
 static BLOCKS: [char; 5] = ['█', '▓', '▒', '░', ' '];
-const FILETIME_SHOW_LENGTH: usize = 19;
 
 pub struct InitialDisplayData {
     pub short_paths: bool,
@@ -145,8 +144,6 @@ pub fn draw_it(
     let num_chars_needed_on_left_most = if idd.by_filecount {
         let max_size = biggest.size;
         max_size.separate_with_commas().chars().count()
-    } else if idd.by_filetime.is_some() {
-        FILETIME_SHOW_LENGTH
     } else {
         find_biggest_size_str(root_node, &idd.output_format)
     };
@@ -349,7 +346,8 @@ pub fn format_string(
         // if screen_reader then bars is 'depth'
         format!("{pretty_name} {bars} {pretty_size}{percent}")
     } else if display_data.initial.by_filetime.is_some() {
-        format!("{pretty_size} {indent}{pretty_name}")
+        let pretty_file_name = get_pretty_file_modified_time(node.filetime.unwrap() as i64);
+        format!("{pretty_file_name} {pretty_size} {indent}{pretty_name}")
     } else {
         format!("{pretty_size} {indent} {pretty_name}{percent}")
     }
@@ -384,8 +382,6 @@ fn get_name_percent(
 fn get_pretty_size(node: &DisplayNode, is_biggest: bool, display_data: &DisplayData) -> String {
     let output = if display_data.initial.by_filecount {
         node.size.separate_with_commas()
-    } else if display_data.initial.by_filetime.is_some() {
-        get_pretty_file_modified_time(node.size as i64)
     } else {
         human_readable_number(node.size, &display_data.initial.output_format)
     };
@@ -506,6 +502,7 @@ mod tests {
         let n = DisplayNode {
             name: PathBuf::from("/short"),
             size: 2_u64.pow(12), // This is 4.0K
+            filetime: 0,
             children: vec![],
         };
         let indent = "┌─┴";
@@ -523,6 +520,7 @@ mod tests {
         let n = DisplayNode {
             name: PathBuf::from(name),
             size: 2_u64.pow(12), // This is 4.0K
+            filetime: 0,
             children: vec![],
         };
         let indent = "┌─┴";
@@ -542,6 +540,7 @@ mod tests {
         let n = DisplayNode {
             name: PathBuf::from("/short"),
             size: 2_u64.pow(12), // This is 4.0K
+            filetime: 0,
             children: vec![],
         };
         let indent = "";
@@ -596,6 +595,7 @@ mod tests {
         let n = DisplayNode {
             name: PathBuf::from("/short"),
             size: 2_u64.pow(size),
+            filetime: 0,
             children: vec![],
         };
         let first_size_bar = repeat(BLOCKS[0]).take(13).collect();

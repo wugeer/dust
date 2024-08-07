@@ -8,7 +8,7 @@ use crate::progress::Operation;
 use crate::progress::PAtomicInfo;
 use crate::progress::RuntimeErrors;
 use crate::progress::ORDERING;
-use crate::utils::is_filtered_out_due_to_file_time;
+use crate::utils::is_filtered_out_due_to_filetime;
 use crate::utils::is_filtered_out_due_to_invert_regex;
 use crate::utils::is_filtered_out_due_to_regex;
 use rayon::iter::ParallelBridge;
@@ -83,22 +83,23 @@ fn clean_inodes(x: Node, inodes: &mut HashSet<(u64, u64)>, walk_data: &WalkData)
         .filter_map(|c| clean_inodes(c, inodes, walk_data))
         .collect();
 
-    let actual_size = if walk_data.by_filetime.is_some() {
+    let filetime = if walk_data.by_filetime.is_some() {
         // If by_filetime is Some, directory 'size' is the maximum filetime among child files instead of disk size
         new_children
             .iter()
-            .map(|c| c.size)
-            .chain(std::iter::once(x.size))
+            .map(|c| c.filetime)
+            .chain(std::iter::once(x.filetime))
             .max()
-            .unwrap_or(0)
+            .unwrap_or(Some(0))
     } else {
         // If by_filetime is None, directory 'size' is the sum of disk sizes or file counts of child files
-        x.size + new_children.iter().map(|c| c.size).sum::<u64>()
+        None
     };
 
     Some(Node {
         name: x.name,
-        size: actual_size,
+        size: x.size + new_children.iter().map(|c| c.size).sum::<u64>(),
+        filetime,
         children: new_children,
         inode_device: x.inode_device,
         depth: x.depth,
@@ -149,7 +150,7 @@ fn ignore_file(entry: &DirEntry, walk_data: &WalkData) -> bool {
                 ]
                 .iter()
                 .any(|(filter_time, actual_time)| {
-                    is_filtered_out_due_to_file_time(filter_time, *actual_time)
+                    is_filtered_out_due_to_filetime(filter_time, *actual_time)
                 })
             {
                 return true;
@@ -275,6 +276,7 @@ mod tests {
         Node {
             name: PathBuf::new(),
             size: 10,
+            filetime: None,
             children: vec![],
             inode_device: Some((5, 6)),
             depth: 0,
@@ -345,6 +347,7 @@ mod tests {
         let a = Node {
             name: PathBuf::from_str("a").unwrap(),
             size: 0,
+            filetime: None,
             children: vec![],
             inode_device: Some((3, 66310)),
             depth: 0,
@@ -353,6 +356,7 @@ mod tests {
         let b = Node {
             name: PathBuf::from_str("b").unwrap(),
             size: 0,
+            filetime: None,
             children: vec![],
             inode_device: None,
             depth: 0,
@@ -361,6 +365,7 @@ mod tests {
         let c = Node {
             name: PathBuf::from_str("c").unwrap(),
             size: 0,
+            filetime: None,
             children: vec![],
             inode_device: Some((1, 66310)),
             depth: 0,

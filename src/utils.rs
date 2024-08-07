@@ -65,7 +65,7 @@ pub fn is_filtered_out_due_to_regex(filter_regex: &[Regex], dir: &Path) -> bool 
     }
 }
 
-pub fn is_filtered_out_due_to_file_time(
+pub fn is_filtered_out_due_to_filetime(
     filter_time: &Option<(Operater, i64)>,
     actual_time: i64,
 ) -> bool {

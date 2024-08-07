@@ -1,6 +1,6 @@
 use crate::dir_walker::WalkData;
 use crate::platform::get_metadata;
-use crate::utils::is_filtered_out_due_to_file_time;
+use crate::utils::is_filtered_out_due_to_filetime;
 use crate::utils::is_filtered_out_due_to_invert_regex;
 use crate::utils::is_filtered_out_due_to_regex;
 
@@ -11,6 +11,7 @@ use std::path::PathBuf;
 pub struct Node {
     pub name: PathBuf,
     pub size: u64,
+    pub filetime: Option<u64>,
     pub children: Vec<Node>,
     pub inode_device: Option<(u64, u64)>,
     pub depth: usize,
@@ -54,25 +55,29 @@ pub fn build_node(
             ]
             .iter()
             .any(|(filter_time, actual_time)| {
-                is_filtered_out_due_to_file_time(filter_time, *actual_time)
+                is_filtered_out_due_to_filetime(filter_time, *actual_time)
             }) {
             0
         } else if by_filecount {
             1
-        } else if by_filetime.is_some() {
-            match by_filetime {
-                Some(FileTime::Modified) => data.2 .0.unsigned_abs(),
-                Some(FileTime::Accessed) => data.2 .1.unsigned_abs(),
-                Some(FileTime::Changed) => data.2 .2.unsigned_abs(),
-                None => unreachable!(),
-            }
         } else {
             data.0
         };
 
+        let filetime = if by_filetime.is_some() {
+            match by_filetime {
+                Some(FileTime::Modified) => Some(data.2 .0.unsigned_abs()),
+                Some(FileTime::Accessed) => Some(data.2 .1.unsigned_abs()),
+                Some(FileTime::Changed) => Some(data.2 .2.unsigned_abs()),
+                None => unreachable!(),
+            }
+        } else {
+            None
+        };
         Node {
             name: dir,
             size,
+            filetime,
             children,
             inode_device,
             depth,
